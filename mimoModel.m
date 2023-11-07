@@ -1,15 +1,15 @@
 clc; clear;
-close all
+%close all
 
-txAntennasNum = 4;
+txAntennasNum = 8;
 rxAntennasNum = txAntennasNum;
 
 numSymbs = txAntennasNum;
 
-M = 2;
+M = 4;
 modOrder = 2^M;
 
-snr = 100;
+snr = (-10:1:45);
 
 Pin = 1;
 
@@ -17,13 +17,13 @@ powersVec = sqrt(Pin/numSymbs)*ones(1, numSymbs);
 
 powersMat = diag(powersVec);
 
-inputData = randi([0 modOrder-1], numSymbs, 1); 
+nRealiz = 15000;
 
-inputSymbols = qammod(inputData, modOrder, 'UnitAveragePower' , true);
+nErr = zeros(length(snr), nRealiz);
 
 for i = 1:txAntennasNum
-    for k = 1:rxAntennasNum
-        Urot(i,k) = (1/sqrt(numSymbs)) * exp( ((1i*2*pi)/numSymbs) * (k-1) * (i-1) );
+    for j = 1:rxAntennasNum
+        uRot(i, j) = (1/sqrt(numSymbs)) * exp( ((1i*2*pi)/numSymbs) * (j-1) * (i-1) );
     end
 end
 
@@ -31,18 +31,53 @@ h = reshape((randn(txAntennasNum * rxAntennasNum, 1) + 1i*randn(txAntennasNum * 
 
 [U, sgm, V] = svd(h);
 
-txSignal = h * V * powersMat * inputSymbols;
+inputData = randi([0 1], numSymbs, M);
 
-varSignal = var(txSignal);
-varNoise = varSignal*10^(-snr/10);
-txSignal = txSignal + sqrt(varNoise/2)*(randn(size(txSignal))+1i*randn(size(txSignal)));
+for i = 1:length(snr)
+    for j = 1:nRealiz
+        rxSignal = formSignal(inputData, modOrder, numSymbs, h, powersMat, U, V, snr(i), NaN);
+        
+        for k = 1:numSymbs
+            outputSymbols(k, 1) = rxSignal(k) / sgm(k, k) / powersVec(k);
+        end
+        
+        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
 
-rxSignal = U' * txSignal;
+        dataOut = de2bi(outputData, M);
+    
+        [nErrors, ~] = biterr(inputData, dataOut);
 
-for i = 1:numSymbs
-    outputSymbols(i, 1) = rxSignal(i) / sgm(i,i) / powersVec(i);
+        nErr(i, j) = nErrors;
+    end
 end
 
-outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
+for i = 1:length(snr)
+    for j = 1:nRealiz
+        rxSignal = formSignal(inputData, modOrder, numSymbs, h, powersMat, U, V, snr(i), uRot);
+        
+        for k = 1:numSymbs
+            outputSymbols(k, 1) = rxSignal(k) / sgm(k, k) / powersVec(k);
+        end
 
-disp(isequal(inputData, outputData));
+        outputSymbols = uRot' * outputSymbols;
+        
+        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
+
+        dataOut = de2bi(outputData, M);
+    
+        [nErrors, ~] = biterr(inputData, dataOut);
+
+        nErrWRotate(i, j) = nErrors;
+    end
+end
+
+ber = sum(nErr,2)./(nRealiz*numSymbs*M);
+
+ber2 = sum(nErrWRotate,2)./(nRealiz*numSymbs*M);
+
+semilogy(snr, ber);
+hold on;
+semilogy(snr, ber2); grid on;
+hold off;
+title('16-QAM');
+legend('Без матрицы поворота', 'С матрицей поворота');
