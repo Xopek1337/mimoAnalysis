@@ -55,9 +55,9 @@ for i = 1:length(SNR_dB)
             end
         end
 
-        outputSymbols2 = outputSymbols / sqrt(Pin);
+        outputSymbols = outputSymbols / sqrt(Pin);
         
-        outputData = qamdemod(outputSymbols2, modOrder, 'UnitAveragePower', true);
+        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower', true);
 
         dataOut = de2bi(outputData, M);
     
