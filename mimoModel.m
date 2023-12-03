@@ -1,10 +1,10 @@
 clc; clear;
 %close all
 
-txAntennasNum = 8;
-rxAntennasNum = 6;
+txAntennasNum = 2;
+rxAntennasNum = 4;
 
-numSymbs = 6;
+numSymbs = 1;
 
 M = 4;
 modOrder = 2^M;
@@ -15,7 +15,7 @@ SNR_dB = (0:1:30);
 
 varNoise = 1;
 
-nRealiz = 15000;
+nRealiz = 10000;
 
 nErr = zeros(length(SNR_dB), nRealiz);
 
@@ -31,12 +31,8 @@ h = (randn(txAntennasNum, rxAntennasNum) + 1i*randn(txAntennasNum, rxAntennasNum
 
 sgm = sgm(1:numSymbs,1:numSymbs);
 
-if(txAntennasNum > rxAntennasNum)
-    U = U(:, 1:numSymbs);
-elseif (rxAntennasNum > txAntennasNum)
-    V = V(:, 1:numSymbs);
-end
-
+U = U(:, 1:numSymbs);
+V = V(:, 1:numSymbs);
 
 for i = 1:length(SNR_dB)
     for j = 1:nRealiz
@@ -50,6 +46,10 @@ for i = 1:length(SNR_dB)
         inputData = randi([0 1], numSymbs, M);
 
         rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, NaN);
+
+        dataSym = bi2de(inputData);
+
+        inputSymbols = qammod(dataSym, modOrder, 'UnitAveragePower', true) * sqrt(Pin);
         
         for k = 1:numSymbs
             if(strcmp(typeDetector, 'MMSE'))
@@ -59,9 +59,9 @@ for i = 1:length(SNR_dB)
             end
         end
 
-        outputSymbols = outputSymbols / mean(abs(outputSymbols));
+        outputSymbols2 = outputSymbols / sqrt(Pin);
         
-        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower', true);
+        outputData = qamdemod(outputSymbols2, modOrder, 'UnitAveragePower', true);
 
         dataOut = de2bi(outputData, M);
     
@@ -94,7 +94,7 @@ for i = 1:length(SNR_dB)
 
         outputSymbols = uRot(1:numSymbs, 1:numSymbs)' * outputSymbols;
 
-        outputSymbols = outputSymbols / mean(abs(outputSymbols));
+        outputSymbols = outputSymbols / sqrt(Pin);
         
         outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
 
