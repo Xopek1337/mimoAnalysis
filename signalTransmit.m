@@ -1,4 +1,4 @@
-function rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, Pin, varNoise, uRot)
+function rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, uRot)
     useRot = ~isnan(uRot);
     
     dataSym = bi2de(inputData);
@@ -6,7 +6,7 @@ function rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, 
     inputSymbols = qammod(dataSym, modOrder, 'UnitAveragePower', true) * sqrt(Pin);
 
     if useRot    
-        txSignal = h *  V * powersMat * uRot(1:numSymbs, 1:numSymbs) * inputSymbols;
+        txSignal = h *  V * powersMat * uRot(1:numChannels, 1:numChannels) * inputSymbols;
     else
         txSignal = h * V * powersMat * inputSymbols;
     end
