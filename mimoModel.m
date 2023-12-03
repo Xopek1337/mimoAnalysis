@@ -1,21 +1,23 @@
 clc; clear;
 %close all
 
-txAntennasNum = 2;
-rxAntennasNum = 4;
+txAntennasNum = 4;
+rxAntennasNum = 2;
 
-numChannels = 1;
+numChannels = 2;
 
 M = 4;
 modOrder = 2^M;
 
 typeDetector = 'ZF';
 
-SNR_dB = (-5:1:10);
+seed = 100;
+
+SNR_dB = (-10:1:30);
 
 varNoise = 1;
 
-nRealiz = 30000;
+nRealiz = 10000;
 
 nErr = zeros(length(SNR_dB), nRealiz);
 
@@ -24,6 +26,8 @@ for i = 1:txAntennasNum
         uRot(i, j) = (1/sqrt(numChannels)) * exp( ((1i*2*pi)/numChannels) * (j-1) * (i-1) );
     end
 end
+
+randn('state', seed);
 
 h = (randn(txAntennasNum, rxAntennasNum) + 1i*randn(txAntennasNum, rxAntennasNum)) *(1/sqrt(2));
 
@@ -35,14 +39,14 @@ U = U(:, 1:numChannels);
 V = V(:, 1:numChannels);
 
 for i = 1:length(SNR_dB)
+    SNR = 10^(SNR_dB(i)/10);
+
+    Pin = SNR * varNoise;
+
+    powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
+    powersMat = diag(powersVec);
+
     for j = 1:nRealiz
-        SNR = 10^(SNR_dB(i)/10);
-
-        Pin = SNR * varNoise;
-
-        powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
-        powersMat = diag(powersVec);
-
         inputData = randi([0 1], numChannels, M);
 
         rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, NaN);
@@ -68,14 +72,14 @@ for i = 1:length(SNR_dB)
 end
 
 for i = 1:length(SNR_dB)
+    SNR = 10^(SNR_dB(i)/10);
+
+    Pin = SNR * varNoise;
+
+    powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
+    powersMat = diag(powersVec);
+
     for j = 1:nRealiz
-        SNR = 10^(SNR_dB(i)/10);
-
-        Pin = SNR * varNoise;
-
-        powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
-        powersMat = diag(powersVec);
-
         inputData = randi([0 1], numChannels, M);
 
         rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, uRot);
