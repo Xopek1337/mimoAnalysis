@@ -4,7 +4,7 @@ clc; clear;
 txAntennasNum = 2;
 rxAntennasNum = 4;
 
-numSymbs = 1;
+numChannels = 1;
 
 M = 4;
 modOrder = 2^M;
@@ -21,7 +21,7 @@ nErr = zeros(length(SNR_dB), nRealiz);
 
 for i = 1:txAntennasNum
     for j = 1:rxAntennasNum
-        uRot(i, j) = (1/sqrt(numSymbs)) * exp( ((1i*2*pi)/numSymbs) * (j-1) * (i-1) );
+        uRot(i, j) = (1/sqrt(numChannels)) * exp( ((1i*2*pi)/numChannels) * (j-1) * (i-1) );
     end
 end
 
@@ -29,10 +29,10 @@ h = (randn(txAntennasNum, rxAntennasNum) + 1i*randn(txAntennasNum, rxAntennasNum
 
 [U, sgm, V] = svd(h);
 
-sgm = sgm(1:numSymbs,1:numSymbs);
+sgm = sgm(1:numChannels, 1:numChannels);
 
-U = U(:, 1:numSymbs);
-V = V(:, 1:numSymbs);
+U = U(:, 1:numChannels);
+V = V(:, 1:numChannels);
 
 for i = 1:length(SNR_dB)
     for j = 1:nRealiz
@@ -40,18 +40,14 @@ for i = 1:length(SNR_dB)
 
         Pin = SNR * varNoise;
 
-        powersVec = sqrt(Pin/numSymbs)*ones(1, numSymbs);
+        powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
         powersMat = diag(powersVec);
 
-        inputData = randi([0 1], numSymbs, M);
+        inputData = randi([0 1], numChannels, M);
 
-        rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, NaN);
-
-        dataSym = bi2de(inputData);
-
-        inputSymbols = qammod(dataSym, modOrder, 'UnitAveragePower', true) * sqrt(Pin);
+        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, NaN);
         
-        for k = 1:numSymbs
+        for k = 1:numChannels
             if(strcmp(typeDetector, 'MMSE'))
                 outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k) + varNoise);
             elseif(strcmp(typeDetector, 'ZF'))
@@ -77,14 +73,14 @@ for i = 1:length(SNR_dB)
 
         Pin = SNR * varNoise;
 
-        powersVec = sqrt(Pin/numSymbs)*ones(1, numSymbs);
+        powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
         powersMat = diag(powersVec);
 
-        inputData = randi([0 1], numSymbs, M);
+        inputData = randi([0 1], numChannels, M);
 
-        rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, uRot);
+        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, uRot);
         
-        for k = 1:numSymbs
+        for k = 1:numChannels
             if(strcmp(typeDetector, 'MMSE'))
                 outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k) + varNoise);
             elseif(strcmp(typeDetector, 'ZF'))
@@ -92,7 +88,7 @@ for i = 1:length(SNR_dB)
             end
         end
 
-        outputSymbols = uRot(1:numSymbs, 1:numSymbs)' * outputSymbols;
+        outputSymbols = uRot(1:numChannels, 1:numChannels)' * outputSymbols;
 
         outputSymbols = outputSymbols / sqrt(Pin);
         
@@ -106,9 +102,9 @@ for i = 1:length(SNR_dB)
     end
 end
 
-ber = sum(nErr,2)./(nRealiz*numSymbs*M);
+ber = sum(nErr,2)./(nRealiz*numChannels*M);
 
-ber2 = sum(nErrWRotate,2)./(nRealiz*numSymbs*M);
+ber2 = sum(nErrWRotate,2)./(nRealiz*numChannels*M);
 
 figure;
 semilogy(SNR_dB, ber);
