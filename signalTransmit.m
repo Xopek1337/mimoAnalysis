@@ -1,4 +1,4 @@
-function rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, snr, Pin, varNoise, uRot)
+function rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, Pin, varNoise, uRot)
     useRot = ~isnan(uRot);
     
     dataSym = bi2de(inputData);

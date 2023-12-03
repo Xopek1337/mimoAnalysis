@@ -11,11 +11,11 @@ modOrder = 2^M;
 
 typeDetector = 'ZF';
 
-SNR_dB = (0:1:30);
+SNR_dB = (-5:1:10);
 
 varNoise = 1;
 
-nRealiz = 10000;
+nRealiz = 30000;
 
 nErr = zeros(length(SNR_dB), nRealiz);
 
@@ -45,7 +45,7 @@ for i = 1:length(SNR_dB)
 
         inputData = randi([0 1], numChannels, M);
 
-        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, NaN);
+        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, NaN);
         
         for k = 1:numChannels
             if(strcmp(typeDetector, 'MMSE'))
@@ -78,7 +78,7 @@ for i = 1:length(SNR_dB)
 
         inputData = randi([0 1], numChannels, M);
 
-        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, uRot);
+        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, uRot);
         
         for k = 1:numChannels
             if(strcmp(typeDetector, 'MMSE'))
