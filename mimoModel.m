@@ -11,11 +11,11 @@ modOrder = 2^M;
 
 typeDetector = 'ZF';
 
-SNR_dB = (30:1:30);
+SNR_dB = (0:1:30);
 
 varNoise = 1;
 
-nRealiz = 1;
+nRealiz = 15000;
 
 nErr = zeros(length(SNR_dB), nRealiz);
 
