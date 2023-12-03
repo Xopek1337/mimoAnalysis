@@ -2,24 +2,22 @@ clc; clear;
 %close all
 
 txAntennasNum = 8;
-rxAntennasNum = txAntennasNum;
+rxAntennasNum = 6;
 
-numSymbs = txAntennasNum;
+numSymbs = 6;
 
 M = 4;
 modOrder = 2^M;
 
-snr = (-10:1:45);
+typeDetector = 'ZF';
 
-Pin = 1;
+SNR_dB = (30:1:30);
 
-powersVec = sqrt(Pin/numSymbs)*ones(1, numSymbs);
+varNoise = 1;
 
-powersMat = diag(powersVec);
+nRealiz = 1;
 
-nRealiz = 15000;
-
-nErr = zeros(length(snr), nRealiz);
+nErr = zeros(length(SNR_dB), nRealiz);
 
 for i = 1:txAntennasNum
     for j = 1:rxAntennasNum
@@ -27,21 +25,43 @@ for i = 1:txAntennasNum
     end
 end
 
-h = reshape((randn(txAntennasNum * rxAntennasNum, 1) + 1i*randn(txAntennasNum * rxAntennasNum, 1))*(1/sqrt(2)), [txAntennasNum, rxAntennasNum]);
+h = (randn(txAntennasNum, rxAntennasNum) + 1i*randn(txAntennasNum, rxAntennasNum)) *(1/sqrt(2));
 
 [U, sgm, V] = svd(h);
 
-inputData = randi([0 1], numSymbs, M);
+sgm = sgm(1:numSymbs,1:numSymbs);
 
-for i = 1:length(snr)
+if(txAntennasNum > rxAntennasNum)
+    U = U(:, 1:numSymbs);
+elseif (rxAntennasNum > txAntennasNum)
+    V = V(:, 1:numSymbs);
+end
+
+
+for i = 1:length(SNR_dB)
     for j = 1:nRealiz
-        rxSignal = formSignal(inputData, modOrder, numSymbs, h, powersMat, U, V, snr(i), NaN);
+        SNR = 10^(SNR_dB(i)/10);
+
+        Pin = SNR * varNoise;
+
+        powersVec = sqrt(Pin/numSymbs)*ones(1, numSymbs);
+        powersMat = diag(powersVec);
+
+        inputData = randi([0 1], numSymbs, M);
+
+        rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, NaN);
         
         for k = 1:numSymbs
-            outputSymbols(k, 1) = rxSignal(k) / sgm(k, k) / powersVec(k);
+            if(strcmp(typeDetector, 'MMSE'))
+                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k) + varNoise);
+            elseif(strcmp(typeDetector, 'ZF'))
+                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k));
+            end
         end
+
+        outputSymbols = outputSymbols / mean(abs(outputSymbols));
         
-        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
+        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower', true);
 
         dataOut = de2bi(outputData, M);
     
@@ -51,15 +71,30 @@ for i = 1:length(snr)
     end
 end
 
-for i = 1:length(snr)
+for i = 1:length(SNR_dB)
     for j = 1:nRealiz
-        rxSignal = formSignal(inputData, modOrder, numSymbs, h, powersMat, U, V, snr(i), uRot);
+        SNR = 10^(SNR_dB(i)/10);
+
+        Pin = SNR * varNoise;
+
+        powersVec = sqrt(Pin/numSymbs)*ones(1, numSymbs);
+        powersMat = diag(powersVec);
+
+        inputData = randi([0 1], numSymbs, M);
+
+        rxSignal = signalTransmit(inputData, modOrder, numSymbs, h, powersMat, U, V, SNR_dB(i), Pin, varNoise, uRot);
         
         for k = 1:numSymbs
-            outputSymbols(k, 1) = rxSignal(k) / sgm(k, k) / powersVec(k);
+            if(strcmp(typeDetector, 'MMSE'))
+                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k) + varNoise);
+            elseif(strcmp(typeDetector, 'ZF'))
+                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k));
+            end
         end
 
-        outputSymbols = uRot' * outputSymbols;
+        outputSymbols = uRot(1:numSymbs, 1:numSymbs)' * outputSymbols;
+
+        outputSymbols = outputSymbols / mean(abs(outputSymbols));
         
         outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
 
@@ -75,9 +110,10 @@ ber = sum(nErr,2)./(nRealiz*numSymbs*M);
 
 ber2 = sum(nErrWRotate,2)./(nRealiz*numSymbs*M);
 
-semilogy(snr, ber);
+figure;
+semilogy(SNR_dB, ber);
 hold on;
-semilogy(snr, ber2); grid on;
+semilogy(SNR_dB, ber2); grid on;
 hold off;
 title('16-QAM');
 legend('Без матрицы поворота', 'С матрицей поворота');
