@@ -2,7 +2,7 @@ clc; clear;
 %close all
 
 txAntennasNum = 4;
-rxAntennasNum = 2;
+rxAntennasNum = 4;
 
 numChannels = 2;
 
@@ -13,7 +13,7 @@ typeDetector = 'ZF';
 
 seed = 100;
 
-SNR_dB = (-10:1:30);
+SNR_dB = (-5:1:20);
 
 varNoise = 1;
 
@@ -53,7 +53,7 @@ for i = 1:length(SNR_dB)
         
         for k = 1:numChannels
             if(strcmp(typeDetector, 'MMSE'))
-                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k) + varNoise);
+                outputSymbols(k, 1) = rxSignal(k) * (sgm(k, k) * powersVec(k)) / (sgm(k, k)^2 * powersVec(k)^2 + varNoise);
             elseif(strcmp(typeDetector, 'ZF'))
                 outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k));
             end
@@ -86,7 +86,7 @@ for i = 1:length(SNR_dB)
         
         for k = 1:numChannels
             if(strcmp(typeDetector, 'MMSE'))
-                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k) + varNoise);
+                outputSymbols(k, 1) = rxSignal(k) * (sgm(k, k) * powersVec(k)) / (sgm(k, k)^2 * powersVec(k)^2 + varNoise);
             elseif(strcmp(typeDetector, 'ZF'))
                 outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k));
             end
