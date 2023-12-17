@@ -11,25 +11,30 @@ modOrder = 2^M;
 
 typeDetector = 'ZF';
 
-seed = 100;
+seed = 1;
 
-SNR_dB = (-5:1:20);
+SNR_dB = (-10:1:20);
 
 varNoise = 1;
 
-nRealiz = 10000;
+nRealiz = 30000;
 
 nErr = zeros(length(SNR_dB), nRealiz);
+nErrWRotate = nErr;
 
-for i = 1:txAntennasNum
-    for j = 1:rxAntennasNum
-        uRot(i, j) = (1/sqrt(numChannels)) * exp( ((1i*2*pi)/numChannels) * (j-1) * (i-1) );
+for i = 1:numChannels
+    for j = 1:numChannels
+        uRot(i, j) = (1/sqrt(numChannels)) * exp( ((1i*2*pi)/numChannels) * (i-1) * (j-1) );
     end
 end
 
 randn('state', seed);
 
-h = (randn(txAntennasNum, rxAntennasNum) + 1i*randn(txAntennasNum, rxAntennasNum)) *(1/sqrt(2));
+h = zeros(txAntennasNum, rxAntennasNum);
+
+while(abs(mean(mean(abs(h.^2))) - 1) > 0.001)
+    h = (randn(txAntennasNum, rxAntennasNum) + 1i*randn(txAntennasNum, rxAntennasNum)) *(1/sqrt(2));
+end
 
 [U, sgm, V] = svd(h);
 
@@ -38,6 +43,9 @@ sgm = sgm(1:numChannels, 1:numChannels);
 U = U(:, 1:numChannels);
 V = V(:, 1:numChannels);
 
+percArray   = 0;
+disp([num2str(percArray(end)) ' %']);
+
 for i = 1:length(SNR_dB)
     SNR = 10^(SNR_dB(i)/10);
 
@@ -47,62 +55,29 @@ for i = 1:length(SNR_dB)
     powersMat = diag(powersVec);
 
     for j = 1:nRealiz
-        inputData = randi([0 1], numChannels, M);
-
-        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, NaN);
-        
-        for k = 1:numChannels
-            if(strcmp(typeDetector, 'MMSE'))
-                outputSymbols(k, 1) = rxSignal(k) * (sgm(k, k) * powersVec(k)) / (sgm(k, k)^2 * powersVec(k)^2 + varNoise);
-            elseif(strcmp(typeDetector, 'ZF'))
-                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k));
-            end
+        % Показывает прогресс выполнения программы
+        indPrt = round(((j+(i-1)*nRealiz)/(nRealiz*length(SNR_dB))) * 1e2);
+        perc   = indPrt; 
+        if perc ~= percArray(end) 
+            percArray(end + 1) = perc;
+            disp([num2str(percArray(end)) ' %']);
         end
 
-        outputSymbols = outputSymbols / sqrt(Pin);
-        
-        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower', true);
+        inputData = randi([0 1], numChannels, M);
 
-        dataOut = de2bi(outputData, M);
-    
+        inputSymbols = formSymbols(inputData, modOrder);
+
+        txSignal = transmitSignal(inputSymbols, h, powersMat, V, varNoise, NaN);
+        dataOut = receiveSignal(txSignal, modOrder, M, numChannels, powersVec, sgm, U, varNoise, typeDetector, NaN);
+
+        txSignalRot = transmitSignal(inputSymbols, h, powersMat, V, varNoise, uRot);
+        dataOutRot = receiveSignal(txSignalRot, modOrder, M, numChannels, powersVec, sgm, U, varNoise, typeDetector, uRot);
+
         [nErrors, ~] = biterr(inputData, dataOut);
+        [nErrorsWRotate, ~] = biterr(inputData, dataOutRot);
 
         nErr(i, j) = nErrors;
-    end
-end
-
-for i = 1:length(SNR_dB)
-    SNR = 10^(SNR_dB(i)/10);
-
-    Pin = SNR * varNoise;
-
-    powersVec = sqrt(Pin/numChannels)*ones(1, numChannels);
-    powersMat = diag(powersVec);
-
-    for j = 1:nRealiz
-        inputData = randi([0 1], numChannels, M);
-
-        rxSignal = signalTransmit(inputData, modOrder, numChannels, h, powersMat, U, V, Pin, varNoise, uRot);
-        
-        for k = 1:numChannels
-            if(strcmp(typeDetector, 'MMSE'))
-                outputSymbols(k, 1) = rxSignal(k) * (sgm(k, k) * powersVec(k)) / (sgm(k, k)^2 * powersVec(k)^2 + varNoise);
-            elseif(strcmp(typeDetector, 'ZF'))
-                outputSymbols(k, 1) = rxSignal(k) / (sgm(k, k) * powersVec(k));
-            end
-        end
-
-        outputSymbols = uRot(1:numChannels, 1:numChannels)' * outputSymbols;
-
-        outputSymbols = outputSymbols / sqrt(Pin);
-        
-        outputData = qamdemod(outputSymbols, modOrder, 'UnitAveragePower' , true);
-
-        dataOut = de2bi(outputData, M);
-    
-        [nErrors, ~] = biterr(inputData, dataOut);
-
-        nErrWRotate(i, j) = nErrors;
+        nErrWRotate(i, j) = nErrorsWRotate;
     end
 end
 
